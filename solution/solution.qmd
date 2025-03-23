@@ -1,0 +1,165 @@
+---
+title: "solution"
+---
+
+## Quarto
+
+Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
+
+```{python} 
+from abc import ABC, abstractmethod
+from typing import List, Dict, Optional
+class Agent(ABC):
+    def __init__(self, name: str, preferences: list[str]):
+        self.name = name
+        self.preferences = preferences
+        self.match = None
+    
+    @abstractmethod
+    def propose(self):
+        pass
+    
+    @abstractmethod
+    def respond(self, proposer: 'Agent') -> bool:
+        pass
+
+class Proposer(Agent):
+    def propose(self):
+        """
+        Propose to the next preferred proposee.
+        """
+        if not self.preferences:
+            raise ValueError(f"{self.name} has no more preferences to propose to.")
+        return self.preferences.pop(0)
+    
+    def respond(self, proposer: 'Agent') -> bool:
+        """
+        Proposers do not respond to proposals; they only propose.
+        """
+        raise NotImplementedError("Proposers cannot respond to proposals.")
+
+class Proposee(Agent):
+    def propose(self):
+        """
+        Proposees do not propose; they only respond.
+        """
+        raise NotImplementedError("Proposees cannot propose.")
+    
+    def respond(self, proposer: 'Agent') -> bool:
+        """
+        Respond to a proposal based on preferences.
+        """
+        if self.match is None:
+            return True
+        else:
+            # If proposee is matched, compare preferences
+            current_match_index = self.preferences.index(self.match.name)
+            proposer_index = self.preferences.index(proposer.name)
+            if proposer_index < current_match_index:
+                return True
+            else:
+                return False
+
+# Gale-Shapley Algorithm
+class GaleShapley:
+    def __init__(self, proposers: list[Proposer], proposees: list[Proposee]):
+        self.proposers = proposers
+        self.proposees = proposees
+        self.matches = {}  # Stores the final matches
+    
+    def match(self) -> dict:
+        """
+        Run the Gale-Shapley algorithm to find a stable matching.
+        """
+        free_proposers = list(self.proposers)  # Initialize all proposers as free
+        
+        while free_proposers:
+            proposer = free_proposers.pop(0)  # Pick a free proposer
+            proposee_name = proposer.propose()  # Propose to the next preferred proposee
+            proposee = next(p for p in self.proposees if p.name == proposee_name)
+            
+            # YOUR CODE HERE
+            # If the proposee accepts the proposal
+            if proposee.respond(proposer):
+                # If proposee was already matched, free the previous match
+                if proposee.match is not None:
+                    previous_match = proposee.match
+                    previous_match.match = None
+                    free_proposers.append(previous_match)
+                
+                # Match the proposer and proposee
+                proposer.match = proposee
+                proposee.match = proposer
+                self.matches[proposer.name] = proposee.name
+            else:
+                # If rejected, put proposer back in the free list
+                free_proposers.append(proposer)
+        
+        return self.matches
+
+# Example from slide #13 (assuming)
+# Test Case 1: Men as proposers
+def test_case_1():
+    print("Test Case 1: Men as proposers")
+    
+    # Create proposers (men)
+    men = [
+        Proposer("A", ["X", "Y", "Z"]),
+        Proposer("B", ["Y", "Z", "X"]),
+        Proposer("C", ["Y", "X", "Z"])
+    ]
+    
+    # Create proposees (women)
+    women = [
+        Proposee("X", ["B", "A", "C"]),
+        Proposee("Y", ["C", "B", "A"]),
+        Proposee("Z", ["A", "C", "B"])
+    ]
+    
+    # Run Gale-Shapley algorithm
+    gs = GaleShapley(men, women)
+    matches = gs.match()
+    
+    print("Final matches:")
+    for proposer, proposee in matches.items():
+        print(f"{proposer} → {proposee}")
+    
+    # Expected: A-Z, B-X, C-Y (based on standard Gale-Shapley with men proposing)
+    print("\n")
+
+# Test Case 2: Women as proposers
+def test_case_2():
+    print("Test Case 2: Women as proposers")
+    
+    # Create proposers (women)
+    women_proposers = [
+        Proposer("X", ["B", "A", "C"]),
+        Proposer("Y", ["C", "B", "A"]),
+        Proposer("Z", ["A", "C", "B"])
+    ]
+    
+    # Create proposees (men)
+    men_proposees = [
+        Proposee("A", ["X", "Y", "Z"]),
+        Proposee("B", ["Y", "Z", "X"]),
+        Proposee("C", ["Y", "X", "Z"])
+    ]
+    
+    # Run Gale-Shapley algorithm
+    gs = GaleShapley(women_proposers, men_proposees)
+    matches = gs.match()
+    
+    print("Final matches:")
+    for proposer, proposee in matches.items():
+        print(f"{proposer} → {proposee}")
+    
+    # Expected outcome when women propose
+
+# Run the tests
+print("Testing Gale-Shapley Algorithm Implementation")
+print("-" * 40)
+test_case_1()
+print("-" * 40)
+test_case_2()
+```
+
